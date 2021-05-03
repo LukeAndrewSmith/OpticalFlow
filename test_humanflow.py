@@ -196,7 +196,8 @@ def load_flo(path):
     data2D = np.resize(data, (w, h, 2))
     return data2D
 
-def make_dataset(dir, phase='test'):
+# previously: phase='test'
+def make_dataset(dir, phase='val'): 
     '''Will search for triplets that go by the pattern '[name]_img1.ppm  [name]_img2.ppm    [name]_flow.flo' '''
     images = []
     for flow_map in sorted(glob.glob(os.path.join(dir, phase+'/*/flow/*.flo'))):
