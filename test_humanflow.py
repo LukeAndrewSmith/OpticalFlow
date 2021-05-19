@@ -92,7 +92,7 @@ def main():
         transforms.Normalize(mean=[0,0],std=[args.div_flow,args.div_flow])
     ])
 
-
+    
     for i, (img_paths, flow_path, seg_path) in enumerate(tqdm(test_list)):
         # import pdb
         # pdb.set_trace()
@@ -131,7 +131,7 @@ def main():
 
         # compute output
         output = model(input_var)
-
+        """ EVALUATION CODE
         if flow_path is not None:
             epe = args.div_flow*realEPE(output, gtflow_var, sparse=True if 'KITTI' in args.dataset else False)
             epe_parts = partsEPE(output, gtflow_var, segmask_var)
@@ -148,7 +148,7 @@ def main():
         raw_im2 = raw_im2.cuda().unsqueeze(0)
         mot_err = motion_warping_error(raw_im1, raw_im2, args.div_flow*output)
         avg_mot_err.update(mot_err.item(), raw_im1.size(0))
-
+        """
         if args.output_dir is not None:
             if flow_path is not None:
                 _, h, w = gtflow.size()
@@ -163,7 +163,7 @@ def main():
             # upsampled_output = F.interpolate(output, (h//4,w//4), mode='bilinear', align_corners=False) # resize to 0.25 for storage
             # flow_write(output_path,  upsampled_output.cpu()[0].data.numpy()[0],  upsampled_output.cpu()[0].data.numpy()[1])
             flow_write(output_path,  output.cpu()[0].data.numpy()[0],  output.cpu()[0].data.numpy()[1])
-
+    
     if args.save_name is not None:
         epe_dict = {}
         for bk in BODY_MAP.keys():

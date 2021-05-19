@@ -4,3 +4,4 @@ logs/
 .idea/
 *.code-workspace
 *.pth.tar
+output/
