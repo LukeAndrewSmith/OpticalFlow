@@ -15,7 +15,7 @@ do
 done
 
 PYTHON_CMD="python test_humanflow.py 
-    /cluster/project/infk/hilliges/lectures/mp21/project6/test 
+    /cluster/project/infk/hilliges/lectures/mp21/project6/dataset
     --dataset humanflow 
     --div-flow 20 
     --no-norm 
@@ -26,7 +26,7 @@ echo "Running the following command $HOW:"
 echo -e "\n$PYTHON_CMD\n"
 
 if [ $USE_BSUB == 1 ]; then                 
-        bsub -n 1 -W 1:00 -oo logs/log_install_3.txt -R "rusage[mem=4096, ngpus_excl_p=1]" $PYTHON_CMD
+        bsub -n 1 -W 1:00 -oo logs/log_test.txt -R "rusage[mem=4096, ngpus_excl_p=1]" $PYTHON_CMD
 else        
         $PYTHON_CMD
 fi

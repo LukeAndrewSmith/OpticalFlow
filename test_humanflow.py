@@ -42,9 +42,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def main():
     global args
     args = parser.parse_args()
-    test_list = make_dataset(args.data)
+    #test_list = make_dataset(args.data)
+    
+    test_list = make_real_dataset(args.data)
     print(f"length of test list: {len(test_list)}")
-    # test_list = make_real_dataset(args.data)
 
     # if args.arch == 'pwc':
     #     model = models.pwc_dc_net('models/pwc_net_ft.pth.tar').cuda()
@@ -197,8 +198,8 @@ def load_flo(path):
     data2D = np.resize(data, (w, h, 2))
     return data2D
 
-# previously: phase='val'
-def make_dataset(dir, phase='test'): 
+# previously: phase='test'
+def make_dataset(dir, phase='val'): 
     '''Will search for triplets that go by the pattern '[name]_img1.ppm  [name]_img2.ppm    [name]_flow.flo' '''
     images = []
     print(f"Making dataset from: {os.path.join(dir, phase+'/*/flow/*.flo')}")
@@ -221,10 +222,11 @@ def make_dataset(dir, phase='test'):
 
     return images
 
-def make_real_dataset(dir):
+def make_real_dataset(dir, phase='test'):
     '''Will search for triplets that go by the pattern '[name]_img1.ppm  [name]_img2.ppm    [name]_flow.flo' '''
     images = []
-    for img1 in sorted( glob.glob(os.path.join(dir, '*1.png')) ):
+    #print(f"Making dataset from: {os.path.join(dir, phase+'/*/flow/*.flo')}")
+    for img1 in sorted( glob.glob(os.path.join(dir, phase+'/*/composition/*.png')) ):
         img2 = img1[:-9] + str(int(img1.split('/')[-1][:-4])+1).zfill(5) + '.png'
 
         if int(img1.split('/')[-1][:-4]) % 10 == 9:
