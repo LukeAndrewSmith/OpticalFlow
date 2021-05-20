@@ -20,7 +20,7 @@ PYTHON_CMD="python test_humanflow.py
     --div-flow 20 
     --no-norm 
     --pretrained /cluster/scratch/cguerner/mp/BananaPyjama/pretrained/pwc_MHOF.pth.tar  
-    --output-dir /cluster/scratch/cguerner/mp/BananaPyjama/output/results-sample-baseline-leonhard"
+    --output-dir /cluster/scratch/cguerner/mp/BananaPyjama/output/results-sample-baseline-2"
 
 echo "Running the following command $HOW:"
 echo -e "\n$PYTHON_CMD\n"
