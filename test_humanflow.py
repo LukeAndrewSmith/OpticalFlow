@@ -43,6 +43,7 @@ def main():
     global args
     args = parser.parse_args()
     test_list = make_dataset(args.data)
+    print(f"length of test list: {len(test_list)}")
     # test_list = make_real_dataset(args.data)
 
     # if args.arch == 'pwc':
@@ -196,10 +197,11 @@ def load_flo(path):
     data2D = np.resize(data, (w, h, 2))
     return data2D
 
-# previously: phase='test'
-def make_dataset(dir, phase='val'): 
+# previously: phase='val'
+def make_dataset(dir, phase='test'): 
     '''Will search for triplets that go by the pattern '[name]_img1.ppm  [name]_img2.ppm    [name]_flow.flo' '''
     images = []
+    print(f"Making dataset from: {os.path.join(dir, phase+'/*/flow/*.flo')}")
     for flow_map in sorted(glob.glob(os.path.join(dir, phase+'/*/flow/*.flo'))):
         #flow_map = os.path.relpath(flow_map, dir)
         img1 = flow_map.replace('/flow/', '/composition/')
