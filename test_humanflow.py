@@ -42,8 +42,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def main():
     global args
     args = parser.parse_args()
-    test_list = make_dataset(args.data)
-    # test_list = make_real_dataset(args.data)
+    #test_list = make_dataset(args.data)
+    
+    test_list = make_real_dataset(args.data)
+    print(f"length of test list: {len(test_list)}")
 
     # if args.arch == 'pwc':
     #     model = models.pwc_dc_net('models/pwc_net_ft.pth.tar').cuda()
@@ -92,7 +94,7 @@ def main():
         transforms.Normalize(mean=[0,0],std=[args.div_flow,args.div_flow])
     ])
 
-
+    
     for i, (img_paths, flow_path, seg_path) in enumerate(tqdm(test_list)):
         # import pdb
         # pdb.set_trace()
@@ -131,7 +133,7 @@ def main():
 
         # compute output
         output = model(input_var)
-
+        """ EVALUATION CODE
         if flow_path is not None:
             epe = args.div_flow*realEPE(output, gtflow_var, sparse=True if 'KITTI' in args.dataset else False)
             epe_parts = partsEPE(output, gtflow_var, segmask_var)
@@ -148,7 +150,7 @@ def main():
         raw_im2 = raw_im2.cuda().unsqueeze(0)
         mot_err = motion_warping_error(raw_im1, raw_im2, args.div_flow*output)
         avg_mot_err.update(mot_err.item(), raw_im1.size(0))
-
+        """
         if args.output_dir is not None:
             if flow_path is not None:
                 _, h, w = gtflow.size()
@@ -157,13 +159,15 @@ def main():
                 os.system('mkdir -p '+output_path[:-15])
             else:
                 output_path = img_paths[0].replace(args.data, args.output_dir)
+                output_path = output_path.replace('/composition/','/')
                 os.system('mkdir -p '+output_path[:-10])
                 output_path = output_path.replace('.png', '.flo')
             output_path = output_path.replace('/flow/','/')
+            print(f"output path: {output_path}")
             # upsampled_output = F.interpolate(output, (h//4,w//4), mode='bilinear', align_corners=False) # resize to 0.25 for storage
             # flow_write(output_path,  upsampled_output.cpu()[0].data.numpy()[0],  upsampled_output.cpu()[0].data.numpy()[1])
             flow_write(output_path,  output.cpu()[0].data.numpy()[0],  output.cpu()[0].data.numpy()[1])
-
+    
     if args.save_name is not None:
         epe_dict = {}
         for bk in BODY_MAP.keys():
@@ -200,6 +204,7 @@ def load_flo(path):
 def make_dataset(dir, phase='val'): 
     '''Will search for triplets that go by the pattern '[name]_img1.ppm  [name]_img2.ppm    [name]_flow.flo' '''
     images = []
+    print(f"Making dataset from: {os.path.join(dir, phase+'/*/flow/*.flo')}")
     for flow_map in sorted(glob.glob(os.path.join(dir, phase+'/*/flow/*.flo'))):
         #flow_map = os.path.relpath(flow_map, dir)
         img1 = flow_map.replace('/flow/', '/composition/')
@@ -219,10 +224,11 @@ def make_dataset(dir, phase='val'):
 
     return images
 
-def make_real_dataset(dir):
+def make_real_dataset(dir, phase='test'):
     '''Will search for triplets that go by the pattern '[name]_img1.ppm  [name]_img2.ppm    [name]_flow.flo' '''
     images = []
-    for img1 in sorted( glob.glob(os.path.join(dir, '*1.png')) ):
+    #print(f"Making dataset from: {os.path.join(dir, phase+'/*/flow/*.flo')}")
+    for img1 in sorted( glob.glob(os.path.join(dir, phase+'/*/composition/*.png')) ):
         img2 = img1[:-9] + str(int(img1.split('/')[-1][:-4])+1).zfill(5) + '.png'
 
         if int(img1.split('/')[-1][:-4]) % 10 == 9:
