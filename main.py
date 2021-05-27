@@ -186,16 +186,16 @@ def main():
         train_writer.add_scalar('mean EPE', train_EPE, epoch)
 
         # evaluate on validation set
+        with torch.no_grad():
+            EPE = validate(val_loader, model, epoch, output_writers)
+        test_writer.add_scalar('mean EPE', EPE, epoch)
 
-        # with torch.no_grad():
-        #     EPE = validate(val_loader, model, epoch, output_writers)
-        # test_writer.add_scalar('mean EPE', EPE, epoch)
+        if best_EPE < 0:
+            best_EPE = EPE
 
-        # if best_EPE < 0:
-        #     best_EPE = EPE
+        is_best = EPE < best_EPE
+        best_EPE = min(EPE, best_EPE)
 
-        # is_best = EPE < best_EPE
-        # best_EPE = min(EPE, best_EPE)
         save_checkpoint({
             'epoch': epoch + 1,
             'arch': args.arch,
