@@ -2,67 +2,48 @@ import argparse
 import os
 import glob
 from tqdm import tqdm
-import cv2
 import numpy as np
-from scipy.ndimage import imread
-from scipy.misc import imsave
-
+from imageio import imread, imsave
+import skimage.transform
 
 parser = argparse.ArgumentParser(description='Test Optical Flow',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('data', metavar='DIR', help='path to dataset')
+parser.add_argument('--phase', dest='phase', type=str, default=None, help='path to dataset')
 parser.add_argument('--pred-dir', dest='pred_dir', type=str, default=None,
                     help='path to prediction folder')
 parser.add_argument('--output-dir', dest='output_dir', type=str, default=None,
                     help='path to save visualizations')
 
+
 def main():
     global args
     args = parser.parse_args()
-    # test_list = make_dataset(args.data)
-    test_list = make_real_dataset(args.data)
+    test_list = make_real_dataset(args.data, phase=args.phase)
+    
+    for i, (img1path, _, flowpath) in enumerate(tqdm(test_list)):
 
-    # dirs = ['flownet2/inference/run.epoch-0-flow-field', 'LDOF', 'pcaflow',
-    #         'EpicFlow', 'spynet', 'spynet_mhf', 'pwc', 'pwc_mhf']
-    dirs = ['flownet2_real', 'LDOF_real', 'pcaflow_real', 'EpicFlow_real', 'flownet2s_real', 'spynet_real', 'spynet_mhf_real', 'pwc_real', 'pwc_mhf_real']
+        img1 = imread(img1path, pilmode='RGB')
+        visual = img1[:,:,:3]
 
-    for i, (img1path, img2path, flowpath) in enumerate(tqdm(test_list)):
-        img1 = imread(img1path, mode='RGB')
-        img2 = imread(img2path, mode='RGB')
         if flowpath is not None:
-            gtflow = flow2rgb(load_flo(flowpath))
+            flo = load_flo(flowpath,'float32')
+            rgbflo = flow2rgb(flo)
+            visual = np.hstack((visual, rgbflo))
 
-        predflows = {}
-        pathexists = True
-        for d in dirs:
-            if flowpath is not None:
-                fpath = flowpath.replace(args.data, args.pred_dir)
-                fpath = fpath.replace('/test/', '/'+d+'/')
-                fpath = fpath.replace('/flow/', '/')
-            else:
-                fpath = img1path.replace(args.data, args.pred_dir)
-                fpath = fpath.replace('.png', '.flo')
-                fpath = fpath.replace('/flow_evaluation/', '/flow_evaluation/'+d+'/')
-                if os.path.isfile(fpath):
-                    predflows[d] = flow2rgb(load_flo(fpath))
-                else:
-                    pathexists = False
-
-        if not pathexists:
-            continue
-        if flowpath is not None:
-            toprow = np.hstack((img1[:,:,:3], predflows[dirs[0]], predflows[dirs[1]], predflows[dirs[2]], predflows[dirs[3]]))
-            bottomrow = np.hstack((gtflow, predflows[dirs[4]], predflows[dirs[5]], predflows[dirs[6]], predflows[dirs[7]]))
-
-        else:
-            toprow = np.hstack((img1[:,:,:3], predflows[dirs[0]], predflows[dirs[1]], predflows[dirs[2]], predflows[dirs[3]]))
-            bottomrow = np.hstack((predflows[dirs[4]], predflows[dirs[5]], predflows[dirs[6]], predflows[dirs[7]], predflows[dirs[8]]))
-
-        viz_im = np.vstack((toprow, bottomrow))
-        save_path = fpath.replace(args.pred_dir, args.output_dir).replace(dirs[-1]+'/', '').replace('.flo', '.png')
+        if args.pred_dir is not None:
+            fpath = img1path.replace(args.data, args.pred_dir)
+            fpath = fpath.replace('.png', '.flo')
+            fpath = fpath.replace('/composition/', '/')
+            if os.path.isfile(fpath):
+                predflow = flow2rgb(load_flo(fpath,'float16'))
+            # Simple upsample for now so that the images are the same size
+            resized = skimage.transform.resize(predflow, img1.shape, preserve_range=True)
+            visual = np.hstack((visual, resized))
+        
+        save_path = img1path.replace(args.data, args.output_dir).replace('/composition/', '/')
         os.system('mkdir -p '+os.path.dirname(save_path))
-        imsave(save_path, viz_im)
-
+        imsave(save_path, visual)
 
 
 def flow2rgb(flow_map, max_value=None):
@@ -82,60 +63,45 @@ def flow2rgb(flow_map, max_value=None):
     return rgb_flow
 
 
-
-def load_flo(path):
+def load_flo(path,type):
     with open(path, 'rb') as f:
+        # head = np.fromfile(f, dtype='|S4',count=1).astype('|U4')
+        # assert((head == 'PIEH').all()),'Header CHAR incorrect. Invalid .flo file'
         magic = np.fromfile(f, np.float32, count=1)
         assert(202021.25 == magic),'Magic number incorrect. Invalid .flo file'
         h = np.fromfile(f, np.int32, count=1)[0]
         w = np.fromfile(f, np.int32, count=1)[0]
-        data = np.fromfile(f, np.float32, count=2*w*h)
+        if type == 'float16':
+            data = np.fromfile(f, np.float16, count=2*w*h)
+        else:
+            data = np.fromfile(f, np.float32, count=2*w*h)
+
     # Reshape data into 3D array (columns, rows, bands)
     data2D = np.resize(data, (w, h, 2))
     return data2D
 
-def make_real_dataset(dir):
+
+def make_real_dataset(dir, phase='test'):
     '''Will search for triplets that go by the pattern '[name]_img1.ppm  [name]_img2.ppm    [name]_flow.flo' '''
     images = []
-    for img1 in sorted( glob.glob(os.path.join(dir, '*/*1.png')) ):
+    print('Fetching images from', glob.glob(os.path.join(dir, phase+'/*/composition/*.png')))
+    for img1 in sorted( glob.glob(os.path.join(dir, phase+'/*/composition/*.png')) ):
         img2 = img1[:-9] + str(int(img1.split('/')[-1][:-4])+1).zfill(5) + '.png'
 
-        if int(img1.split('/')[-1][:-4]) % 10 == 9:
-            continue
-
-        if int(img1.split('/')[-1][:-4]) < 90:
-            continue
-
-        if not (os.path.isfile(os.path.join(dir,img1)) and os.path.isfile(os.path.join(dir,img2))):
-            continue
-
-        images.append([img1, img2, None])
-
-    return images
-
-
-def make_dataset(dir, phase='test'):
-    '''Will search for triplets that go by the pattern '[name]_img1.ppm  [name]_img2.ppm    [name]_flow.flo' '''
-    images = []
-    for flow_map in sorted(glob.glob(os.path.join(dir, phase+'/*/flow/*.flo'))):
-        #flow_map = os.path.relpath(flow_map, dir)
-        img1 = flow_map.replace('/flow/', '/composition/')
-        img1 = img1.replace('.flo', '.png')
-        img2 = img1[:-9] + str(int(img1.split('/')[-1][:-4])+1).zfill(5) + '.png'
-
-        #seg_mask = flow_map.replace('/flow/', '/segm_EXR/')
-        #seg_mask = seg_mask.replace('.flo', '.exr')
-
-        #pred_flow = flow_map.replace(args.data, args.pred_dir).replace('/test/', '/').replace('/flow/','/')
         if int(img1.split('/')[-1][:-4]) % 10 == 9:
             continue
 
         if not (os.path.isfile(os.path.join(dir,img1)) and os.path.isfile(os.path.join(dir,img2))):
             continue
 
-        images.append([img1, img2, flow_map])
+        flow = img1.replace('.png', '.flo').replace('/composition/', '/flow/')
+        if os.path.isfile(flow):
+            images.append([img1, img2, flow])
+        else:
+            images.append([img1, img2, None])
 
-    return images
+    return images 
+
 
 if __name__ == '__main__':
     main()
