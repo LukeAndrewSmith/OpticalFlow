@@ -37,7 +37,6 @@ def main():
             fpath = fpath.replace('/composition/', '/')
             if os.path.isfile(fpath):
                 predflow = flow2rgb(load_flo(fpath,'float16'))
-
             # Simple upsample for now so that the images are the same size
             resized = skimage.transform.resize(predflow, img1.shape, preserve_range=True)
             visual = np.hstack((visual, resized))
@@ -85,6 +84,7 @@ def load_flo(path,type):
 def make_real_dataset(dir, phase='test'):
     '''Will search for triplets that go by the pattern '[name]_img1.ppm  [name]_img2.ppm    [name]_flow.flo' '''
     images = []
+    print('Fetching images from', glob.glob(os.path.join(dir, phase+'/*/composition/*.png')))
     for img1 in sorted( glob.glob(os.path.join(dir, phase+'/*/composition/*.png')) ):
         img2 = img1[:-9] + str(int(img1.split('/')[-1][:-4])+1).zfill(5) + '.png'
 
