@@ -1,0 +1,2 @@
+# python /cluster/home/lusmith/BananaPyjama/generate_visuals.py /cluster/project/infk/hilliges/lectures/mp21/project6/dataset --phase test --pred-dir /cluster/home/lusmith/MachinePerception/visuals/output/results-sample-baseline-leonhard --output-dir /cluster/home/lusmith/MachinePerception/visuals/test
+python /cluster/home/lusmith/BananaPyjama/generate_visuals.py /cluster/project/infk/hilliges/lectures/mp21/project6/dataset --phase test --output-dir /cluster/home/lusmith/MachinePerception/visuals/full_set
