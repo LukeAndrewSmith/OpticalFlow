@@ -183,12 +183,13 @@ def main():
 
         # train for one epoch
         train_loss, train_EPE = train(train_loader, model, optimizer, epoch, train_writer)
-        train_writer.add_scalar('mean EPE', train_EPE, epoch)
+        train_writer.add_scalar('Train/mean train loss [epoch]', train_EPE, epoch)
+        train_writer.add_scalar('Train/mean EPE [epoch]', train_EPE, epoch)
 
         # evaluate on validation set
         with torch.no_grad():
             EPE = validate(val_loader, model, epoch, output_writers)
-        test_writer.add_scalar('mean EPE', EPE, epoch)
+        test_writer.add_scalar('Validate/mean EPE [epoch]', EPE, epoch)
 
         if best_EPE < 0:
             best_EPE = EPE
@@ -238,7 +239,7 @@ def train(train_loader, model, optimizer, epoch, train_writer):
         flow2_EPE = args.div_flow * realEPE(output[0], target, sparse=args.sparse)
         # record loss and EPE
         losses.update(loss.item(), target.size(0))
-        train_writer.add_scalar('train_loss', loss.item(), n_iter)
+        train_writer.add_scalar('Train/train_loss [iteration]', loss.item(), n_iter)
         flow2_EPEs.update(flow2_EPE.item(), target.size(0))
 
         # compute gradient and do optimization step
