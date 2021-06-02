@@ -89,19 +89,17 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def main():
     global args, best_EPE, save_path
     args = parser.parse_args()
+
+    ####
+    # Path
     save_path = args.name
     save_path = os.path.join('checkpoints', save_path)
     print('=> will save everything to {}'.format(save_path))
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
-    train_writer = SummaryWriter(os.path.join(save_path,'train'))
-    test_writer = SummaryWriter(os.path.join(save_path,'test'))
-    output_writers = []
-    for i in range(3):
-        output_writers.append(SummaryWriter(os.path.join(save_path,'test',str(i))))
-
-    # Data loading code
+    ####
+    # Data loading
     input_transform = transforms.Compose([
         flow_transforms.ArrayToTensor(),
         transforms.Normalize(mean=[0,0,0], std=[255,255,255])
@@ -143,11 +141,14 @@ def main():
     train_loader = torch.utils.data.DataLoader(
         train_set, batch_size=args.batch_size,
         num_workers=args.workers, pin_memory=True, shuffle=True)
+    # TODO: If you leave batch_size as non 1 for the validation then the validation fails with 'TERM_MEMLIMIT: job killed after reaching LSF memory usage limit.'
+    # It also seems to make more sense as we want to evaluate each instance in the validation set separately
     val_loader = torch.utils.data.DataLoader(
-        test_set, batch_size=args.batch_size,
+        test_set, batch_size=1,
         num_workers=args.workers, pin_memory=True, shuffle=False)
 
-    # create model
+    ####
+    # Model
     if args.pretrained:
         network_data = torch.load(args.pretrained)
         args.arch = network_data['arch']
@@ -160,6 +161,22 @@ def main():
     model = torch.nn.DataParallel(model).cuda()
     cudnn.benchmark = True
 
+    ####
+    # Summary Writers
+    train_writer = SummaryWriter(os.path.join(save_path,'train'))
+    test_writer = SummaryWriter(os.path.join(save_path,'test'))
+    output_writers = []
+    for i in range(3):
+        output_writers.append(SummaryWriter(os.path.join(save_path,'test',str(i))))
+    
+    ####
+    # Evaluation only
+    if args.evaluate:
+        best_EPE = validate(val_loader, model, 0, output_writers)
+        return
+
+    ####
+    # Optimizer
     assert(args.solver in ['adam', 'sgd'])
     print('=> setting {} solver'.format(args.solver))
     param_groups = model.parameters()
@@ -171,24 +188,23 @@ def main():
         optimizer = torch.optim.SGD(param_groups, args.lr,
                                     momentum=args.momentum, weight_decay=args.weight_decay)
 
-    if args.evaluate:
-        best_EPE = validate(val_loader, model, 0, output_writers)
-        return
-
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=args.milestones, gamma=0.5)
 
+    ####
+    # Training
     is_best = False
     for epoch in range(args.start_epoch, args.epochs):
         scheduler.step()
 
         # train for one epoch
         train_loss, train_EPE = train(train_loader, model, optimizer, epoch, train_writer)
-        train_writer.add_scalar('mean EPE', train_EPE, epoch)
+        train_writer.add_scalar('Train/mean train loss [epoch]', train_EPE, epoch)
+        train_writer.add_scalar('Train/mean EPE [epoch]', train_EPE, epoch)
 
         # evaluate on validation set
-        with torch.no_grad():
-            EPE = validate(val_loader, model, epoch, output_writers)
-        test_writer.add_scalar('mean EPE', EPE, epoch)
+        # with torch.no_grad(): # Not necessary I beleive as we call model.eval() within validate
+        EPE = validate(val_loader, model, epoch, output_writers)
+        test_writer.add_scalar('Validate/mean EPE [epoch]', EPE, epoch)
 
         if best_EPE < 0:
             best_EPE = EPE
@@ -238,7 +254,7 @@ def train(train_loader, model, optimizer, epoch, train_writer):
         flow2_EPE = args.div_flow * realEPE(output[0], target, sparse=args.sparse)
         # record loss and EPE
         losses.update(loss.item(), target.size(0))
-        train_writer.add_scalar('train_loss', loss.item(), n_iter)
+        train_writer.add_scalar('Train/train_loss [iteration]', loss.item(), n_iter)
         flow2_EPEs.update(flow2_EPE.item(), target.size(0))
 
         # compute gradient and do optimization step

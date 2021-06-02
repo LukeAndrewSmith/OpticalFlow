@@ -35,8 +35,12 @@ def main():
             fpath = img1path.replace(args.data, args.pred_dir)
             fpath = fpath.replace('.png', '.flo')
             fpath = fpath.replace('/composition/', '/')
-            if os.path.isfile(fpath):
+            try:
                 predflow = flow2rgb(load_flo(fpath,'float16'))
+            except:
+                print("Unexpected error: No such file ", fpath)
+                raise
+
             # Simple upsample for now so that the images are the same size
             resized = skimage.transform.resize(predflow, img1.shape, preserve_range=True)
             visual = np.hstack((visual, resized))

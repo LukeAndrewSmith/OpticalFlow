@@ -164,9 +164,9 @@ def main():
                 output_path = output_path.replace('.png', '.flo')
             output_path = output_path.replace('/flow/','/')
             print(f"output path: {output_path}")
-            # upsampled_output = F.interpolate(output, (h//4,w//4), mode='bilinear', align_corners=False) # resize to 0.25 for storage
-            # flow_write(output_path,  upsampled_output.cpu()[0].data.numpy()[0],  upsampled_output.cpu()[0].data.numpy()[1])
-            flow_write(output_path,  output.cpu()[0].data.numpy()[0],  output.cpu()[0].data.numpy()[1])
+            upsampled_output = F.interpolate(output, (h//4,w//4), mode='bilinear', align_corners=False) # resize to 0.25 for storage
+            flow_write(output_path,  upsampled_output.cpu()[0].data.numpy()[0],  upsampled_output.cpu()[0].data.numpy()[1])
+            # flow_write(output_path,  output.cpu()[0].data.numpy()[0],  output.cpu()[0].data.numpy()[1])
     
     if args.save_name is not None:
         epe_dict = {}
