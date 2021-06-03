@@ -104,22 +104,30 @@ def main():
         img1 = input_transform(255*imread(img_paths[0])[:,:,:3])
         img2 = input_transform(255*imread(img_paths[1])[:,:,:3])
 
+        # TODO: Commented as it upsamples where it doesn't need to as it doesn't find the ground truth => bad code...
+        # But leaving it incase with
+        print('0',img1.shape,img2.shape)
+        # Resize Image to be 512x512x
         if flow_path is None:
             _, h, w = img1.size()
             new_h = int(np.floor(h/256)*256)
-            new_w = int(np.floor(w/448)*448)
+            new_w = int(np.floor(h/256)*256)
+            # new_w = int(np.floor(w/448)*448)
 
             # if i>744:
             #     import ipdb; ipdb.set_trace()
             img1 = F.upsample(img1.unsqueeze(0), (new_h,new_w), mode='bilinear').squeeze()
             img2 = F.upsample(img2.unsqueeze(0), (new_h,new_w), mode='bilinear').squeeze()
-
+        print('1',img1.shape,img2.shape)
 
         if flow_path is not None:
             gtflow = target_transform(load_flo(flow_path))
             segmask = flow_transforms.ArrayToTensor()(cv2.imread(seg_path))
 
+
         input_var = torch.cat([img1, img2]).unsqueeze(0)
+        print('Model input')
+        print('0:',input_var.shape)
 
         if flow_path is not None:
             gtflow_var = gtflow.unsqueeze(0)
@@ -133,6 +141,7 @@ def main():
 
         # compute output
         output = model(input_var)
+        print('1:',output.shape)
         """ EVALUATION CODE
         if flow_path is not None:
             epe = args.div_flow*realEPE(output, gtflow_var, sparse=True if 'KITTI' in args.dataset else False)
@@ -164,6 +173,7 @@ def main():
                 output_path = output_path.replace('.png', '.flo')
             output_path = output_path.replace('/flow/','/')
             print(f"output path: {output_path}")
+            # Make output the correct size
             upsampled_output = F.interpolate(output, (h//4,w//4), mode='bilinear', align_corners=False) # resize to 0.25 for storage
             flow_write(output_path,  upsampled_output.cpu()[0].data.numpy()[0],  upsampled_output.cpu()[0].data.numpy()[1])
             # flow_write(output_path,  output.cpu()[0].data.numpy()[0],  output.cpu()[0].data.numpy()[1])
