@@ -88,60 +88,33 @@ def main():
             transforms.Normalize(mean=[0,0,0], std=[255,255,255]),
             transforms.Normalize(mean=[0.411,0.432,0.45], std=[1,1,1])
         ])
-
+    """
     target_transform = transforms.Compose([
         flow_transforms.ArrayToTensor(),
         transforms.Normalize(mean=[0,0],std=[args.div_flow,args.div_flow])
     ])
+    """
 
     
-    for i, (img_paths, flow_path, seg_path) in enumerate(tqdm(test_list)):
-        # import pdb
-        # pdb.set_trace()
-        raw_im1 = flow_transforms.ArrayToTensor()(255*imread(img_paths[0])[:,:,:3])
-        raw_im2 = flow_transforms.ArrayToTensor()(255*imread(img_paths[1])[:,:,:3])
+    for img_paths, flow_path, seg_path in tqdm(test_list):
+        img1 = input_transform(255*imread(img_paths[0])[:,:,:3]).squeeze()
+        img2 = input_transform(255*imread(img_paths[1])[:,:,:3]).squeeze()
 
-        img1 = input_transform(255*imread(img_paths[0])[:,:,:3])
-        img2 = input_transform(255*imread(img_paths[1])[:,:,:3])
+        # Resize Image from 640*640 to 512x512 (seems to sometimes give better results)
+        # if flow_path is None:
+        #    img1 = F.upsample(img1.unsqueeze(0), (640, 640), mode='bilinear')
+        #    img2 = F.upsample(img2.unsqueeze(0), (640, 640), mode='bilinear')
 
-        # TODO: Commented as it upsamples where it doesn't need to as it doesn't find the ground truth => bad code...
-        # But leaving it incase with
-        print('0',img1.shape,img2.shape)
-        # Resize Image to be 512x512x
-        if flow_path is None:
-            _, h, w = img1.size()
-            new_h = int(np.floor(h/256)*256)
-            new_w = int(np.floor(h/256)*256)
-            # new_w = int(np.floor(w/448)*448)
+        input_var = torch.cat([img1, img2]).unsqueeze(0).to(device)
 
-            # if i>744:
-            #     import ipdb; ipdb.set_trace()
-            img1 = F.upsample(img1.unsqueeze(0), (new_h,new_w), mode='bilinear').squeeze()
-            img2 = F.upsample(img2.unsqueeze(0), (new_h,new_w), mode='bilinear').squeeze()
-        print('1',img1.shape,img2.shape)
-
-        if flow_path is not None:
-            gtflow = target_transform(load_flo(flow_path))
-            segmask = flow_transforms.ArrayToTensor()(cv2.imread(seg_path))
-
-
-        input_var = torch.cat([img1, img2]).unsqueeze(0)
-        print('Model input')
-        print('0:',input_var.shape)
-
-        if flow_path is not None:
-            gtflow_var = gtflow.unsqueeze(0)
-            segmask_var = segmask.unsqueeze(0)
-
-        input_var = input_var.to(device)
-
-        if flow_path is not None:
-            gtflow_var = gtflow_var.to(device)
-            segmask_var = segmask_var.to(device)
-
-        # compute output
+        # compute output, output size is input/4
         output = model(input_var)
-        print('1:',output.shape)
+
+        """
+        if flow_path is not None:
+            gtflow_var = target_transform(load_flo(flow_path)).unsqueeze(0).to(device)
+            segmask_var = flow_transforms.ArrayToTensor()(cv2.imread(seg_path)).unsqueeze(0).to(device)
+        """
         """ EVALUATION CODE
         if flow_path is not None:
             epe = args.div_flow*realEPE(output, gtflow_var, sparse=True if 'KITTI' in args.dataset else False)
@@ -162,7 +135,6 @@ def main():
         """
         if args.output_dir is not None:
             if flow_path is not None:
-                _, h, w = gtflow.size()
                 output_path = flow_path.replace(args.data, args.output_dir)
                 output_path = output_path.replace('/test/','/')
                 os.system('mkdir -p '+output_path[:-15])
@@ -172,11 +144,12 @@ def main():
                 os.system('mkdir -p '+output_path[:-10])
                 output_path = output_path.replace('.png', '.flo')
             output_path = output_path.replace('/flow/','/')
-            print(f"output path: {output_path}")
-            # Make output the correct size
-            upsampled_output = F.interpolate(output, (h//4,w//4), mode='bilinear', align_corners=False) # resize to 0.25 for storage
-            flow_write(output_path,  upsampled_output.cpu()[0].data.numpy()[0],  upsampled_output.cpu()[0].data.numpy()[1])
-            # flow_write(output_path,  output.cpu()[0].data.numpy()[0],  output.cpu()[0].data.numpy()[1])
+            print(f"output path: {output_path}", output.shape)
+
+            # Make output the correct size for submission, not necessary if the input is 640*640
+            # upsampled_output = F.interpolate(output, (160,160), mode='bilinear', align_corners=False)
+
+            flow_write(output_path,  output.cpu()[0].data.numpy()[0],  output.cpu()[0].data.numpy()[1])
     
     if args.save_name is not None:
         epe_dict = {}
