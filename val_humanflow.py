@@ -18,8 +18,6 @@ import flow_transforms
 from tqdm import tqdm
 
 
-
-
 parser = argparse.ArgumentParser(description='Test Optical Flow',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('data', metavar='DIR', help='path to dataset')
@@ -42,9 +40,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def main():
     global args
     args = parser.parse_args()
-    #test_list = make_dataset(args.data)
+    test_list = make_dataset(args.data)
     
-    test_list = make_real_dataset(args.data)
+    #test_list = make_real_dataset(args.data)
     print(f"length of test list: {len(test_list)}")
 
     # if args.arch == 'pwc':
@@ -96,6 +94,7 @@ def main():
 
     
     for i, (img_paths, flow_path, seg_path) in enumerate(tqdm(test_list)):
+        print(f"flow path {flow_path}")
         # import pdb
         # pdb.set_trace()
         raw_im1 = flow_transforms.ArrayToTensor()(255*imread(img_paths[0])[:,:,:3])
@@ -104,10 +103,10 @@ def main():
         img1 = input_transform(255*imread(img_paths[0])[:,:,:3])
         img2 = input_transform(255*imread(img_paths[1])[:,:,:3])
 
-        if flow_path is None:
-            _, h, w = img1.size()
-            new_h = int(np.floor(h/256)*256)
-            new_w = int(np.floor(w/448)*448)
+        #if flow_path is None:
+            #_, h, w = img1.size()
+            #new_h = int(np.floor(h/256)*256)
+            #new_w = int(np.floor(w/448)*448)
 
             # if i>744:
             #     import ipdb; ipdb.set_trace()
@@ -133,7 +132,7 @@ def main():
 
         # compute output
         output = model(input_var)
-        """ EVALUATION CODE
+
         if flow_path is not None:
             epe = args.div_flow*realEPE(output, gtflow_var, sparse=True if 'KITTI' in args.dataset else False)
             epe_parts = partsEPE(output, gtflow_var, segmask_var)
@@ -150,7 +149,7 @@ def main():
         raw_im2 = raw_im2.cuda().unsqueeze(0)
         mot_err = motion_warping_error(raw_im1, raw_im2, args.div_flow*output)
         avg_mot_err.update(mot_err.item(), raw_im1.size(0))
-        """
+        
         if args.output_dir is not None:
             if flow_path is not None:
                 _, h, w = gtflow.size()
