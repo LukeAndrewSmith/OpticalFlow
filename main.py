@@ -197,7 +197,7 @@ def main():
         scheduler.step()
 
         # train for one epoch
-        train_loss, train_EPE = train(train_loader, model, optimizer, epoch, train_writer)
+        _, train_EPE = train(train_loader, model, optimizer, epoch, train_writer)
         train_writer.add_scalar('Train/mean train loss [epoch]', train_EPE, epoch)
         train_writer.add_scalar('Train/mean EPE [epoch]', train_EPE, epoch)
 
@@ -241,6 +241,8 @@ def train(train_loader, model, optimizer, epoch, train_writer):
         data_time.update(time.time() - end)
         target = target.to(device)
         input = torch.cat(input,1).to(device)
+
+        
 
         # compute output
         output = model(input)

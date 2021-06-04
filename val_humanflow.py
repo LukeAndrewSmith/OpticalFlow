@@ -17,6 +17,8 @@ from multiscaleloss import realEPE, motion_warping_error
 import flow_transforms
 from tqdm import tqdm
 
+from post_process import post_process
+
 
 parser = argparse.ArgumentParser(description='Test Optical Flow',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -93,7 +95,7 @@ def main():
     ])
 
     
-    for i, (img_paths, flow_path, seg_path) in enumerate(tqdm(test_list)):
+    for img_paths, flow_path, seg_path in tqdm(test_list):
         print(f"flow path {flow_path}")
         # import pdb
         # pdb.set_trace()
@@ -110,8 +112,8 @@ def main():
 
             # if i>744:
             #     import ipdb; ipdb.set_trace()
-            #img1 = F.upsample(img1.unsqueeze(0), (new_h,new_w), mode='bilinear').squeeze()
-            #img2 = F.upsample(img2.unsqueeze(0), (new_h,new_w), mode='bilinear').squeeze()
+        #img1 = F.upsample(img1.unsqueeze(0), (512,512), mode='bilinear').squeeze()
+        #img2 = F.upsample(img2.unsqueeze(0), (512,512), mode='bilinear').squeeze()
 
 
         if flow_path is not None:
@@ -132,6 +134,8 @@ def main():
 
         # compute output
         output = model(input_var)
+        #output = F.upsample(output, (160,160), mode='bilinear')
+        #output = torch.Tensor(post_process(output.squeeze().cpu().detach().numpy(), seg_path)).unsqueeze(0).to(device)
 
         if flow_path is not None:
             epe = args.div_flow*realEPE(output, gtflow_var, sparse=True if 'KITTI' in args.dataset else False)

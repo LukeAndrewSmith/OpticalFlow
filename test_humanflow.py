@@ -68,14 +68,7 @@ def main():
     else:
         model = models.pwc_dc_net('models/pwc_net.pth.tar').cuda()
 
-
     model.eval()
-    flow_epe = AverageMeter()
-    avg_mot_err = AverageMeter()
-
-    avg_parts_epe = {}
-    for bk in BODY_MAP.keys():
-        avg_parts_epe[bk] = AverageMeter()
 
     if args.no_norm:
         input_transform = transforms.Compose([
@@ -88,12 +81,6 @@ def main():
             transforms.Normalize(mean=[0,0,0], std=[255,255,255]),
             transforms.Normalize(mean=[0.411,0.432,0.45], std=[1,1,1])
         ])
-    """
-    target_transform = transforms.Compose([
-        flow_transforms.ArrayToTensor(),
-        transforms.Normalize(mean=[0,0],std=[args.div_flow,args.div_flow])
-    ])
-    """
 
     
     for img_paths, flow_path, seg_path in tqdm(test_list):
@@ -115,24 +102,7 @@ def main():
             gtflow_var = target_transform(load_flo(flow_path)).unsqueeze(0).to(device)
             segmask_var = flow_transforms.ArrayToTensor()(cv2.imread(seg_path)).unsqueeze(0).to(device)
         """
-        """ EVALUATION CODE
-        if flow_path is not None:
-            epe = args.div_flow*realEPE(output, gtflow_var, sparse=True if 'KITTI' in args.dataset else False)
-            epe_parts = partsEPE(output, gtflow_var, segmask_var)
-            epe_parts.update((x, args.div_flow*y) for x, y in epe_parts.items() )
 
-            # record EPE
-            flow_epe.update(epe.item(), gtflow_var.size(0))
-            for bk in avg_parts_epe:
-                if epe_parts[bk].item() > 0:
-                    avg_parts_epe[bk].update(epe_parts[bk].item(), gtflow_var.size(0))
-
-        # record motion warping error
-        raw_im1 = raw_im1.cuda().unsqueeze(0)
-        raw_im2 = raw_im2.cuda().unsqueeze(0)
-        mot_err = motion_warping_error(raw_im1, raw_im2, args.div_flow*output)
-        avg_mot_err.update(mot_err.item(), raw_im1.size(0))
-        """
         if args.output_dir is not None:
             if flow_path is not None:
                 output_path = flow_path.replace(args.data, args.output_dir)
@@ -150,26 +120,7 @@ def main():
             # upsampled_output = F.interpolate(output, (160,160), mode='bilinear', align_corners=False)
 
             flow_write(output_path,  output.cpu()[0].data.numpy()[0],  output.cpu()[0].data.numpy()[1])
-    
-    if args.save_name is not None:
-        epe_dict = {}
-        for bk in BODY_MAP.keys():
-            epe_dict[bk] = avg_parts_epe[bk].avg
-        epe_dict['full_epe'] = flow_epe.avg
-        np.save(os.path.join('results', args.save_name), epe_dict)
 
-    print("Averge EPE",flow_epe.avg )
-    print("Motion warping error", avg_mot_err.avg)
-
-def partsEPE(output, gtflow, seg_mask):
-    parts_epe_dict = {}
-    for bk in BODY_MAP.keys():
-        mask = seg_mask == BODY_MAP[bk]
-        gt_partflow = mask.type_as(gtflow)[:,:2,:,:] * gtflow
-        epe_part = realEPE(output, gt_partflow, sparse=True)
-        parts_epe_dict[bk] = epe_part
-
-    return parts_epe_dict
 
 def load_flo(path):
     with open(path, 'rb') as f:
@@ -244,7 +195,7 @@ def flow_write(filename,uv,v=None):
             u = uv_[:,:,0]
             v = uv_[:,:,1]
         else:
-            raise UVError('Wrong format for flow input')
+            raise TypeError('Wrong format for flow input')
     else:
         u = uv
 
@@ -261,40 +212,6 @@ def flow_write(filename,uv,v=None):
     tmp[:,np.arange(width)*2 + 1] = v
     tmp.astype(np.float16).tofile(f)
     f.close()
-
-class AverageMeter(object):
-    """Computes and stores the average and current value"""
-
-    def __init__(self):
-        self.reset()
-
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count
-
-    def __repr__(self):
-        return '{:.3f} ({:.3f})'.format(self.val, self.avg)
-
-BODY_MAP = {'global': 1, 'head': 16, 'lIndex0': 23, 'lIndex1': 33, 'lIndex2': 43,
-        'lMiddle0': 24, 'lMiddle1': 34, 'lMiddle2': 44, 'lPinky0': 25,
-        'lPinky1': 35, 'lPinky2': 45, 'lRing0': 26, 'lRing1': 36, 'lRing2': 46,
-        'lThumb0': 27, 'lThumb1': 37, 'lThumb2': 47, 'leftCalf': 5, 'leftFoot': 8,
-        'leftForeArm': 19, 'leftHand': 21, 'leftShoulder': 14, 'leftThigh': 2, 'leftToes': 11,
-        'leftUpperArm': 17, 'neck': 13, 'rIndex0': 28, 'rIndex1': 38, 'rIndex2': 48,
-        'rMiddle0': 29, 'rMiddle1': 39, 'rMiddle2': 49, 'rPinky0': 30, 'rPinky1': 40,
-        'rPinky2': 50, 'rRing0': 31, 'rRing1': 41, 'rRing2': 51, 'rThumb0': 32,
-        'rThumb1': 42, 'rThumb2': 52, 'rightCalf': 6, 'rightFoot': 9, 'rightForeArm': 20,
-        'rightHand': 22, 'rightShoulder': 15, 'rightThigh': 3, 'rightToes': 12, 'rightUpperArm': 18,
-        'spine': 4, 'spine1': 7, 'spine2': 10}
-
 
 
 if __name__ == '__main__':
