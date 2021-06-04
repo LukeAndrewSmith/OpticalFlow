@@ -18,8 +18,6 @@ import flow_transforms
 from tqdm import tqdm
 
 
-
-
 parser = argparse.ArgumentParser(description='Test Optical Flow',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('data', metavar='DIR', help='path to dataset')
@@ -42,9 +40,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def main():
     global args
     args = parser.parse_args()
-    #test_list = make_dataset(args.data)
+    test_list = make_dataset(args.data)
     
-    test_list = make_real_dataset(args.data)
+    #test_list = make_real_dataset(args.data)
     print(f"length of test list: {len(test_list)}")
 
     # if args.arch == 'pwc':
@@ -88,34 +86,53 @@ def main():
             transforms.Normalize(mean=[0,0,0], std=[255,255,255]),
             transforms.Normalize(mean=[0.411,0.432,0.45], std=[1,1,1])
         ])
-    """
+
     target_transform = transforms.Compose([
         flow_transforms.ArrayToTensor(),
         transforms.Normalize(mean=[0,0],std=[args.div_flow,args.div_flow])
     ])
-    """
 
     
-    for img_paths, flow_path, seg_path in tqdm(test_list):
-        img1 = input_transform(255*imread(img_paths[0])[:,:,:3]).squeeze()
-        img2 = input_transform(255*imread(img_paths[1])[:,:,:3]).squeeze()
+    for i, (img_paths, flow_path, seg_path) in enumerate(tqdm(test_list)):
+        print(f"flow path {flow_path}")
+        # import pdb
+        # pdb.set_trace()
+        raw_im1 = flow_transforms.ArrayToTensor()(255*imread(img_paths[0])[:,:,:3])
+        raw_im2 = flow_transforms.ArrayToTensor()(255*imread(img_paths[1])[:,:,:3])
 
-        # Resize Image from 640*640 to 512x512 (seems to sometimes give better results)
-        # if flow_path is None:
-        #    img1 = F.upsample(img1.unsqueeze(0), (640, 640), mode='bilinear')
-        #    img2 = F.upsample(img2.unsqueeze(0), (640, 640), mode='bilinear')
+        img1 = input_transform(255*imread(img_paths[0])[:,:,:3])
+        img2 = input_transform(255*imread(img_paths[1])[:,:,:3])
 
-        input_var = torch.cat([img1, img2]).unsqueeze(0).to(device)
+        #if flow_path is None:
+            #_, h, w = img1.size()
+            #new_h = int(np.floor(h/256)*256)
+            #new_w = int(np.floor(w/448)*448)
 
-        # compute output, output size is input/4
+            # if i>744:
+            #     import ipdb; ipdb.set_trace()
+            #img1 = F.upsample(img1.unsqueeze(0), (new_h,new_w), mode='bilinear').squeeze()
+            #img2 = F.upsample(img2.unsqueeze(0), (new_h,new_w), mode='bilinear').squeeze()
+
+
+        if flow_path is not None:
+            gtflow = target_transform(load_flo(flow_path))
+            segmask = flow_transforms.ArrayToTensor()(cv2.imread(seg_path))
+
+        input_var = torch.cat([img1, img2]).unsqueeze(0)
+
+        if flow_path is not None:
+            gtflow_var = gtflow.unsqueeze(0)
+            segmask_var = segmask.unsqueeze(0)
+
+        input_var = input_var.to(device)
+
+        if flow_path is not None:
+            gtflow_var = gtflow_var.to(device)
+            segmask_var = segmask_var.to(device)
+
+        # compute output
         output = model(input_var)
 
-        """
-        if flow_path is not None:
-            gtflow_var = target_transform(load_flo(flow_path)).unsqueeze(0).to(device)
-            segmask_var = flow_transforms.ArrayToTensor()(cv2.imread(seg_path)).unsqueeze(0).to(device)
-        """
-        """ EVALUATION CODE
         if flow_path is not None:
             epe = args.div_flow*realEPE(output, gtflow_var, sparse=True if 'KITTI' in args.dataset else False)
             epe_parts = partsEPE(output, gtflow_var, segmask_var)
@@ -132,9 +149,10 @@ def main():
         raw_im2 = raw_im2.cuda().unsqueeze(0)
         mot_err = motion_warping_error(raw_im1, raw_im2, args.div_flow*output)
         avg_mot_err.update(mot_err.item(), raw_im1.size(0))
-        """
+        
         if args.output_dir is not None:
             if flow_path is not None:
+                _, h, w = gtflow.size()
                 output_path = flow_path.replace(args.data, args.output_dir)
                 output_path = output_path.replace('/test/','/')
                 os.system('mkdir -p '+output_path[:-15])
@@ -144,11 +162,9 @@ def main():
                 os.system('mkdir -p '+output_path[:-10])
                 output_path = output_path.replace('.png', '.flo')
             output_path = output_path.replace('/flow/','/')
-            print(f"output path: {output_path}", output.shape)
-
-            # Make output the correct size for submission, not necessary if the input is 640*640
-            # upsampled_output = F.interpolate(output, (160,160), mode='bilinear', align_corners=False)
-
+            print(f"output path: {output_path}")
+            #upsampled_output = F.interpolate(output, (h//4,w//4), mode='bilinear', align_corners=False) # resize to 0.25 for storage
+            #flow_write(output_path,  upsampled_output.cpu()[0].data.numpy()[0],  upsampled_output.cpu()[0].data.numpy()[1])
             flow_write(output_path,  output.cpu()[0].data.numpy()[0],  output.cpu()[0].data.numpy()[1])
     
     if args.save_name is not None:
