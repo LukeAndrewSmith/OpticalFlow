@@ -9,7 +9,7 @@ def post_process(image: np.ndarray, seg_mask: str, blur: float = 0, resized: int
                 cv2.imread(seg_mask, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)[:, :, 0]
             ).astype(np.uint8),
         (resized,resized))
-    image = np.moveaxis(image, [0,1,2], [2,1,0])
+    image = np.moveaxis(image, [0,1,2], [2,0,1])
     image = cv2.resize(image.astype(float), (resized, resized))
     output = image.copy()
 
@@ -36,4 +36,4 @@ def post_process(image: np.ndarray, seg_mask: str, blur: float = 0, resized: int
     
     
     output = cv2.resize(output, (160, 160))
-    return np.moveaxis(output, [0,1,2], [2,1,0])
+    return np.moveaxis(output, [0,1,2], [2,0,1])
