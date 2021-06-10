@@ -16,8 +16,8 @@ done
 
 DATA="/cluster/project/infk/hilliges/lectures/mp21/project6/dataset"
 DATASET="humanflow"
-PRETRAINED="/cluster/scratch/cguerner/mp/BananaPyjama/pretrained/pwc_MHOF.pth.tar"
-OUTPUT_DIR="/cluster/scratch/cguerner/mp/BananaPyjama/output/validation_test"
+PRETRAINED="/cluster/home/bfreydt/BananaPyjama/pretrained/model_best.pth.tar"
+OUTPUT_DIR="/cluster/scratch/bfreydt/output/"
 
 if [ -d "$OUTPUT_DIR" ]; then rm -rf $OUTPUT_DIR; fi
 
@@ -33,8 +33,7 @@ echo "Running the following command $HOW:"
 echo -e "\n$PYTHON_CMD\n"
 
 if [ $USE_BSUB == 1 ]; then                 
-        bsub -n 1 -W 1:00 -oo logs/log_validate.txt -R "rusage[mem=4096, ngpus_excl_p=1]" $PYTHON_CMD
-        watch -n 1 bjobs
+        bsub -I -n 1 -W 1:00 -R "rusage[mem=4096, ngpus_excl_p=1]" $PYTHON_CMD
 else        
         $PYTHON_CMD
 fi
