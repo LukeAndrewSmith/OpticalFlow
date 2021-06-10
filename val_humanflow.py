@@ -105,15 +105,9 @@ def main():
         img1 = input_transform(255*imread(img_paths[0])[:,:,:3])
         img2 = input_transform(255*imread(img_paths[1])[:,:,:3])
 
-        #if flow_path is None:
-            #_, h, w = img1.size()
-            #new_h = int(np.floor(h/256)*256)
-            #new_w = int(np.floor(w/448)*448)
-
-            # if i>744:
-            #     import ipdb; ipdb.set_trace()
-        #img1 = F.upsample(img1.unsqueeze(0), (512,512), mode='bilinear').squeeze()
-        #img2 = F.upsample(img2.unsqueeze(0), (512,512), mode='bilinear').squeeze()
+        size = 448
+        img1 = F.upsample(img1.unsqueeze(0), (size,size), mode='bilinear').squeeze()
+        img2 = F.upsample(img2.unsqueeze(0), (size,size), mode='bilinear').squeeze()
 
 
         if flow_path is not None:
@@ -134,9 +128,9 @@ def main():
 
         # compute output
         output = model(input_var)
-        #output = F.upsample(output, (160,160), mode='bilinear')
-        #output = torch.Tensor(post_process(output.squeeze().cpu().detach().numpy(), seg_path)).unsqueeze(0).to(device)
-
+        
+        output = torch.Tensor(post_process(output.squeeze().cpu().detach().numpy(), seg_path, 0)).unsqueeze(0).to(device)
+    
         if flow_path is not None:
             epe = args.div_flow*realEPE(output, gtflow_var, sparse=True if 'KITTI' in args.dataset else False)
             epe_parts = partsEPE(output, gtflow_var, segmask_var)
