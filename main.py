@@ -16,7 +16,6 @@ import flow_transforms
 import models
 import datasets
 from multiscaleloss import multiscaleEPE, realEPE
-import datetime
 from tensorboardX import SummaryWriter
 import numpy as np
 
@@ -43,7 +42,7 @@ parser.add_argument('--arch', '-a', metavar='ARCH', default='flownets',
                     choices=model_names,
                     help='model architecture, overwritten if pretrained is specified: ' +
                     ' | '.join(model_names))
-parser.add_argument('--solver', default='adam',choices=['adam','sgd'],
+parser.add_argument('--solver', default='adam', choices=['adam', 'sgd'],
                     help='solver algorithms')
 parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',
                     help='number of data loading workers')
@@ -63,7 +62,7 @@ parser.add_argument('--beta', default=0.999, type=float, metavar='M',
                     help='beta parameter for adam')
 parser.add_argument('--weight-decay', '--wd', default=4e-4, type=float,
                     metavar='W', help='weight decay')
-parser.add_argument('--multiscale-weights', '-w', default=[0.005,0.01,0.02,0.08,0.32], type=float, nargs=5,
+parser.add_argument('--multiscale-weights', '-w', default=[0.005, 0.01, 0.02, 0.08, 0.32], type=float, nargs=5,
                     help='training weight for each scale, from highest resolution (flow2) to lowest (flow6)',
                     metavar=('W2', 'W3', 'W4', 'W5', 'W6'))
 parser.add_argument('--sparse', action='store_true',
@@ -76,10 +75,11 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
 parser.add_argument('--pretrained', dest='pretrained', default=None,
                     help='path to pre-trained model')
 parser.add_argument('--no-date', action='store_true',
-                    help='don\'t append date timestamp to folder' )
+                    help='don\'t append date timestamp to folder')
 parser.add_argument('--div-flow', default=20, type=float,
                     help='value by which flow will be divided. Original value is 20 but 1 with batchNorm gives good results')
-parser.add_argument('--milestones', default=[100,150,200], metavar='N', nargs='*', help='epochs at which learning rate is divided by 2')
+parser.add_argument('--milestones', default=[100, 150, 200], metavar='N',
+                    nargs='*', help='epochs at which learning rate is divided by 2')
 
 best_EPE = -1
 n_iter = 0
@@ -102,27 +102,27 @@ def main():
     # Data loading
     input_transform = transforms.Compose([
         flow_transforms.ArrayToTensor(),
-        transforms.Normalize(mean=[0,0,0], std=[255,255,255])
+        transforms.Normalize(mean=[0, 0, 0], std=[255, 255, 255])
     ])
 
     target_transform = transforms.Compose([
         flow_transforms.ArrayToTensor(),
-        transforms.Normalize(mean=[0,0],std=[args.div_flow,args.div_flow])
+        transforms.Normalize(mean=[0, 0], std=[args.div_flow, args.div_flow])
     ])
 
     if 'KITTI' in args.dataset:
         args.sparse = True
     if args.sparse:
         co_transform = flow_transforms.Compose([
-            flow_transforms.RandomCrop((320,448)),
+            flow_transforms.RandomCrop((320, 448)),
             flow_transforms.RandomVerticalFlip(),
             flow_transforms.RandomHorizontalFlip()
         ])
     else:
         co_transform = flow_transforms.Compose([
             flow_transforms.RandomTranslate(10),
-            flow_transforms.RandomRotate(10,5),
-            flow_transforms.RandomCrop((320,448)),
+            flow_transforms.RandomRotate(10, 5),
+            flow_transforms.RandomCrop((320, 448)),
             flow_transforms.RandomVerticalFlip(),
             flow_transforms.RandomHorizontalFlip()
         ])
@@ -141,7 +141,7 @@ def main():
     train_loader = torch.utils.data.DataLoader(
         train_set, batch_size=args.batch_size,
         num_workers=args.workers, pin_memory=True, shuffle=True)
-    # TODO: If you leave batch_size as non 1 for the validation then the validation fails with 'TERM_MEMLIMIT: job killed after reaching LSF memory usage limit.'
+    # If you leave batch_size as non 1 for the validation then the validation fails with 'TERM_MEMLIMIT: job killed after reaching LSF memory usage limit.'
     # It also seems to make more sense as we want to evaluate each instance in the validation set separately
     val_loader = torch.utils.data.DataLoader(
         test_set, batch_size=1,
@@ -163,12 +163,13 @@ def main():
 
     ####
     # Summary Writers
-    train_writer = SummaryWriter(os.path.join(save_path,'train'))
-    test_writer = SummaryWriter(os.path.join(save_path,'test'))
+    train_writer = SummaryWriter(os.path.join(save_path, 'train'))
+    test_writer = SummaryWriter(os.path.join(save_path, 'test'))
     output_writers = []
     for i in range(3):
-        output_writers.append(SummaryWriter(os.path.join(save_path,'test',str(i))))
-    
+        output_writers.append(SummaryWriter(
+            os.path.join(save_path, 'test', str(i))))
+
     ####
     # Evaluation only
     if args.evaluate:
@@ -188,7 +189,8 @@ def main():
         optimizer = torch.optim.SGD(param_groups, args.lr,
                                     momentum=args.momentum, weight_decay=args.weight_decay)
 
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=args.milestones, gamma=0.5)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(
+        optimizer, milestones=args.milestones, gamma=0.5)
 
     ####
     # Training
@@ -197,8 +199,10 @@ def main():
         scheduler.step()
 
         # train for one epoch
-        _, train_EPE = train(train_loader, model, optimizer, epoch, train_writer)
-        train_writer.add_scalar('Train/mean train loss [epoch]', train_EPE, epoch)
+        _, train_EPE = train(train_loader, model,
+                             optimizer, epoch, train_writer)
+        train_writer.add_scalar(
+            'Train/mean train loss [epoch]', train_EPE, epoch)
         train_writer.add_scalar('Train/mean EPE [epoch]', train_EPE, epoch)
 
         # evaluate on validation set
@@ -228,7 +232,8 @@ def train(train_loader, model, optimizer, epoch, train_writer):
     losses = AverageMeter()
     flow2_EPEs = AverageMeter()
 
-    epoch_size = len(train_loader) if args.epoch_size == 0 else min(len(train_loader), args.epoch_size)
+    epoch_size = len(train_loader) if args.epoch_size == 0 else min(
+        len(train_loader), args.epoch_size)
 
     # switch to train mode
     model.train()
@@ -240,9 +245,7 @@ def train(train_loader, model, optimizer, epoch, train_writer):
         # measure data loading time
         data_time.update(time.time() - end)
         target = target.to(device)
-        input = torch.cat(input,1).to(device)
-
-        
+        input = torch.cat(input, 1).to(device)
 
         # compute output
         output = model(input)
@@ -250,13 +253,16 @@ def train(train_loader, model, optimizer, epoch, train_writer):
             # Since Target pooling is not very precise when sparse,
             # take the highest resolution prediction and upsample it instead of downsampling target
             h, w = target.size()[-2:]
-            output = [F.interpolate(output[0], (h,w)), *output[1:]]
+            output = [F.interpolate(output[0], (h, w)), *output[1:]]
 
-        loss = multiscaleEPE(output, target, weights=args.multiscale_weights, sparse=args.sparse)
-        flow2_EPE = args.div_flow * realEPE(output[0], target, sparse=args.sparse)
+        loss = multiscaleEPE(
+            output, target, weights=args.multiscale_weights, sparse=args.sparse)
+        flow2_EPE = args.div_flow * \
+            realEPE(output[0], target, sparse=args.sparse)
         # record loss and EPE
         losses.update(loss.item(), target.size(0))
-        train_writer.add_scalar('Train/train_loss [iteration]', loss.item(), n_iter)
+        train_writer.add_scalar(
+            'Train/train_loss [iteration]', loss.item(), n_iter)
         flow2_EPEs.update(flow2_EPE.item(), target.size(0))
 
         # compute gradient and do optimization step
@@ -291,7 +297,7 @@ def validate(val_loader, model, epoch, output_writers):
     end = time.time()
     for i, (input, target) in enumerate(val_loader):
         target = target.to(device)
-        input = torch.cat(input,1).to(device)
+        input = torch.cat(input, 1).to(device)
 
         # compute output
         output = model(input)
@@ -305,11 +311,16 @@ def validate(val_loader, model, epoch, output_writers):
 
         if i < len(output_writers):  # log first output of first batches
             if epoch == 0:
-                mean_values = torch.tensor([0.411,0.432,0.45], dtype=input.dtype).view(3,1,1)
-                output_writers[i].add_image('GroundTruth', flow2rgb(args.div_flow * target[0], max_value=10), 0)
-                output_writers[i].add_image('Inputs', (input[0,:3].cpu() + mean_values).clamp(0,1), 0)
-                output_writers[i].add_image('Inputs', (input[0,3:].cpu() + mean_values).clamp(0,1), 1)
-            output_writers[i].add_image('FlowNet Outputs', flow2rgb(args.div_flow * output[0], max_value=10), epoch)
+                mean_values = torch.tensor(
+                    [0.411, 0.432, 0.45], dtype=input.dtype).view(3, 1, 1)
+                output_writers[i].add_image('GroundTruth', flow2rgb(
+                    args.div_flow * target[0], max_value=10), 0)
+                output_writers[i].add_image(
+                    'Inputs', (input[0, :3].cpu() + mean_values).clamp(0, 1), 0)
+                output_writers[i].add_image(
+                    'Inputs', (input[0, 3:].cpu() + mean_values).clamp(0, 1), 1)
+            output_writers[i].add_image('FlowNet Outputs', flow2rgb(
+                args.div_flow * output[0], max_value=10), epoch)
 
         if i % args.print_freq == 0:
             print('Test: [{0}/{1}]\t Time {2}\t EPE {3}'
@@ -321,9 +332,10 @@ def validate(val_loader, model, epoch, output_writers):
 
 
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
-    torch.save(state, os.path.join(save_path,filename))
+    torch.save(state, os.path.join(save_path, filename))
     if is_best:
-        shutil.copyfile(os.path.join(save_path,filename), os.path.join(save_path,'model_best.pth.tar'))
+        shutil.copyfile(os.path.join(save_path, filename),
+                        os.path.join(save_path, 'model_best.pth.tar'))
 
 
 class AverageMeter(object):
@@ -351,8 +363,9 @@ class AverageMeter(object):
 def flow2rgb(flow_map, max_value):
     flow_map_np = flow_map.detach().cpu().numpy()
     _, h, w = flow_map_np.shape
-    flow_map_np[:,(flow_map_np[0] == 0) & (flow_map_np[1] == 0)] = float('nan')
-    rgb_map = np.ones((3,h,w)).astype(np.float32)
+    flow_map_np[:, (flow_map_np[0] == 0) & (
+        flow_map_np[1] == 0)] = float('nan')
+    rgb_map = np.ones((3, h, w)).astype(np.float32)
     if max_value is not None:
         normalized_flow_map = flow_map_np / max_value
     else:
@@ -360,7 +373,7 @@ def flow2rgb(flow_map, max_value):
     rgb_map[0] += normalized_flow_map[0]
     rgb_map[1] -= 0.5*(normalized_flow_map[0] + normalized_flow_map[1])
     rgb_map[2] += normalized_flow_map[1]
-    return rgb_map.clip(0,1)
+    return rgb_map.clip(0, 1)
 
 
 if __name__ == '__main__':

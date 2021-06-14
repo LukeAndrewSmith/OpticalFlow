@@ -2,18 +2,13 @@
 implementation of the PWC-DC network for optical flow estimation by Sun et al., 2018
 
 Jinwei Gu and Zhile Ren
-
 """
 
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
-import os
 from spatial_correlation_sampler import spatial_correlation_sample
 import numpy as np
-
-
-
 
 
 __all__ = [
@@ -308,20 +303,6 @@ def pwc(data=None):
 def pwc_dc_net(path=None):
 
     model = PWCDCNet()
-    if path is not None:
-        data = torch.load(path)
-        if 'state_dict' in data.keys():
-            model.load_state_dict(data['state_dict'])
-        else:
-            model.load_state_dict(data)
-    return model
-
-
-
-
-def pwc_dc_net_old(path=None):
-
-    model = PWCDCNet_old()
     if path is not None:
         data = torch.load(path)
         if 'state_dict' in data.keys():
