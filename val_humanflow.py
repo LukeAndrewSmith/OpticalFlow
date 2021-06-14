@@ -76,6 +76,11 @@ def main():
         transforms.Normalize(mean=[0, 0], std=[args.div_flow, args.div_flow])
     ])
 
+    mapepe_mean = []
+    mapepe_var = []
+    mapepe_min = []
+    mapepe_max = []
+
     for img_paths, flow_path, seg_path in tqdm(make_dataset(args.data)):
         raw_im1 = flow_transforms.ArrayToTensor()(
             255*imread(img_paths[0])[:, :, :3])
@@ -128,6 +133,12 @@ def main():
         mot_err = motion_warping_error(raw_im1, raw_im2, args.div_flow*output)
         avg_mot_err.update(mot_err.item(), raw_im1.size(0))
 
+        mapepe = realEPEMapGTDS(output, gtflow_var)
+        mapepe_mean.append(mapepe.mean())
+        mapepe_var.append(mapepe.var())
+        mapepe_min.append(mapepe.min())
+        mapepe_max.append(mapepe.max())
+
         if args.output_dir is not None:
             if flow_path is not None:
                 output_path = flow_path.replace(args.data, args.output_dir)
@@ -143,7 +154,7 @@ def main():
 
             flow_write(output_path,  output.cpu()[0].data.numpy()[
                        0],  output.cpu()[0].data.numpy()[1])
-
+        
     if args.save_name is not None:
         epe_dict = {}
         for bk in BODY_MAP.keys():
@@ -151,8 +162,19 @@ def main():
         epe_dict['full_epe'] = flow_epe.avg
         np.save(os.path.join('results', args.save_name), epe_dict)
 
-    print("Averge EPE", flow_epe.avg)
+    print(f"mapepe min: {np.min(mapepe_min)}")
+    print(f"mapepe max: {np.max(mapepe_max)}")
+    print(f"mapepe mean: {np.median(mapepe_mean)}")
+    print(f"mapepe var: {np.median(mapepe_var)}")
+    print("Averge EPE",flow_epe.avg )
     print("Motion warping error", avg_mot_err.avg)
+
+
+def realEPEMapGTDS(output, target):
+    _, _, h, w = output.size()
+    downsampled_target = F.interpolate(target, (h,w), mode='bilinear', align_corners=False)
+    EPE_map = torch.norm(downsampled_target-output,2,1).cpu().detach().numpy().reshape((h,w))
+    return EPE_map
 
 
 def partsEPE(output, gtflow, seg_mask):

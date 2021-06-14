@@ -22,17 +22,14 @@ Running the following commands require python 3.8 (only version we tested), and 
 $ source scripts/init_leonhard.sh
 ```
 
+Then please specify the paths in each script you want to run.
+
 To get the predictions on the test set from the pretrained model (with the venv activated):
 ```
 $ ./scripts/test.sh
 ```
 
 To get the predictions and EPE on the validation set from the pretrained model* (with the venv activated):
-```
-$ ./scripts/val.sh
-```
-
-To get the visualisations of the errors on the validation set* (with the venv activated):
 ```
 $ ./scripts/val.sh
 ```

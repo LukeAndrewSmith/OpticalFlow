@@ -5,4 +5,3 @@ logs/
 *.code-workspace
 *.pth.tar
 output/
-test.sh
