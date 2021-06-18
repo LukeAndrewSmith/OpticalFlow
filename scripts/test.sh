@@ -2,9 +2,9 @@
 
 DATA="/cluster/project/infk/hilliges/lectures/mp21/project6/dataset"
 DATASET="humanflow"
-PRETRAINED_MODEL_PATH=""
-OUTPUT_DIR=""
-LOGS_PATH=""
+PRETRAINED_MODEL_PATH="pretrained/model_best.pth.tar"
+OUTPUT_DIR="output/testing_final_scripts"
+LOG_FILE_PATH="logs/final_test_log.txt"
 
 if [ -d "$OUTPUT_DIR" ]; then rm -rf $OUTPUT_DIR; fi
 
@@ -19,4 +19,4 @@ PYTHON_CMD="python test_humanflow.py
 echo "Running the following command $HOW:"
 echo -e "\n$PYTHON_CMD\n"
 
-bsub -n 1 -W 1:00 -oo $LOGS_PATH -R "rusage[mem=4096, ngpus_excl_p=1]" $PYTHON_CMD
+bsub -n 1 -W 1:00 -oo $LOG_FILE_PATH -R "rusage[mem=4096, ngpus_excl_p=1]" $PYTHON_CMD

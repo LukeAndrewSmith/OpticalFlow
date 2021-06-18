@@ -100,6 +100,8 @@ def main():
         flow_write(output_path,  output.cpu()[0].data.numpy()[
                    0],  output.cpu()[0].data.numpy()[1])
 
+    print("Finished generating and exporting output.")
+
 
 def load_flo(path):
     with open(path, 'rb') as f:
