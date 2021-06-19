@@ -1,4 +1,4 @@
-INPUT_PATH=""
+INPUT_PATH="<ABSOLUTE_PATH>/pretrained/initial_pwc.pth.tar"
 OUTPUT_PATH=""
 LOGS_PATH=""
 
