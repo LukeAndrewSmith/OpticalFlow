@@ -3,8 +3,8 @@
 DATA="/cluster/project/infk/hilliges/lectures/mp21/project6/dataset"
 DATASET="humanflow"
 PRETRAINED_MODEL_PATH="pretrained/initial_pwc.pth.tar"
-OUTPUT_PATH="testing_final_scripts_train"
-LOG_FILE_PATH="logs/final_train_log.txt"
+OUTPUT_PATH="" # ENTER YOUR OWN PATH HERE
+LOG_FILE_PATH="" # ENTER YOUR OWN PATH HERE
 EPOCHS=1
 BATCH_SIZE=8
 

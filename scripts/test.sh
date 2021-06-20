@@ -3,8 +3,8 @@
 DATA="/cluster/project/infk/hilliges/lectures/mp21/project6/dataset"
 DATASET="humanflow"
 PRETRAINED_MODEL_PATH="pretrained/fine_tuned.pth.tar"
-OUTPUT_DIR="output/testing_final_scripts"
-LOG_FILE_PATH="logs/final_test_log.txt"
+OUTPUT_DIR="" # ENTER YOUR OWN PATH HERE
+LOG_FILE_PATH="" # ENTER YOUR OWN PATH HERE
 
 if [ -d "$OUTPUT_DIR" ]; then rm -rf $OUTPUT_DIR; fi
 
