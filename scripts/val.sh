@@ -2,7 +2,7 @@
 
 DATA="/cluster/project/infk/hilliges/lectures/mp21/project6/dataset"
 DATASET="humanflow"
-PRETRAINED_MODEL_PATH="pretrained/model_best.pth.tar"
+PRETRAINED_MODEL_PATH="pretrained/fine_tuned.pth.tar"
 OUTPUT_DIR="output/testing_final_scripts_val"
 LOG_FILE_PATH="logs/final_val_log.txt"
 
