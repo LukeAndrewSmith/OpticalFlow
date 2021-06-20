@@ -12,6 +12,8 @@ Base Project: https://gitlab.ethz.ch/yanzhang25/mp21-proj6-humanof
 
 This repo contains an exploration into the Machine Perception task of 'Learning Human Optical Flow' in which the velocity of a humans body parts in a sequence of images is deduced and indicated through colouring of the images.
 
+The model used for generating our final submission is pretrained/fine_tuned.pth.tar.
+
 For more details please refer to ```report.pdf```
 
 ## Reproducing results
