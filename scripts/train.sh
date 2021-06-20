@@ -3,7 +3,7 @@
 DATA="/cluster/project/infk/hilliges/lectures/mp21/project6/dataset"
 DATASET="humanflow"
 PRETRAINED_MODEL_PATH="pretrained/model_best.pth.tar"
-OUTPUT_PATH="output/testing_final_scripts_train"
+OUTPUT_PATH="testing_final_scripts_train"
 LOG_FILE_PATH="logs/final_train_log.txt"
 EPOCHS=3
 BATCH_SIZE=8
